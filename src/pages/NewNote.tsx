@@ -70,21 +70,50 @@ const NewNote = () => {
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       
       console.log("Uploading file:", fileName);
+
+      // First, ensure the file is less than 50MB
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File size must be less than 50MB");
+      }
       
       const { data, error: uploadError } = await supabase.storage
         .from('attachments')
-        .upload(fileName, file);
+        .upload(`${user.id}/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
         throw uploadError;
       }
 
+      // After successful upload, create a record in the attachments table
+      const { error: dbError } = await supabase
+        .from('attachments')
+        .insert({
+          file_name: fileName,
+          file_type: file.type,
+          file_size: file.size,
+          file_path: `${user.id}/${fileName}`,
+          metadata: {
+            originalName: file.name,
+            uploadedBy: user.id,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+
+      if (dbError) {
+        console.error("Database error:", dbError);
+        throw dbError;
+      }
+
       console.log("File uploaded successfully:", data);
       toast.success("File uploaded successfully");
     } catch (error: any) {
       console.error('Error uploading file:', error);
-      toast.error(`Error uploading file: ${error.message}`);
+      toast.error(error.message || 'Error uploading file');
     } finally {
       setIsUploading(false);
     }
