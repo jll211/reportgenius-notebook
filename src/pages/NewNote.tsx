@@ -54,7 +54,9 @@ const NewNote = () => {
   };
 
   const handleFileSelect = async (file: File) => {
+    console.log("Starting file upload process");
     setIsUploading(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -63,15 +65,22 @@ const NewNote = () => {
         return;
       }
 
+      // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
+      console.log("Uploading file:", fileName);
+      
+      const { data, error: uploadError } = await supabase.storage
         .from('attachments')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
+      console.log("File uploaded successfully:", data);
       toast.success("File uploaded successfully");
     } catch (error: any) {
       console.error('Error uploading file:', error);
