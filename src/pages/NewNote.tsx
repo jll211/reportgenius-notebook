@@ -12,6 +12,7 @@ const NewNote = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
 
   const handleSave = async () => {
@@ -30,19 +31,22 @@ const NewNote = () => {
         return;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('ideas')
         .insert({
           title,
           content,
           user_id: user.id
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast.success("Note saved successfully!");
       navigate("/");
     } catch (error: any) {
+      console.error('Error saving note:', error);
       toast.error(error.message);
     } finally {
       setIsLoading(false);
@@ -50,6 +54,7 @@ const NewNote = () => {
   };
 
   const handleFileSelect = async (file: File) => {
+    setIsUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -67,9 +72,12 @@ const NewNote = () => {
 
       if (uploadError) throw uploadError;
 
-      toast.success(`File ${file.name} uploaded successfully`);
+      toast.success("File uploaded successfully");
     } catch (error: any) {
+      console.error('Error uploading file:', error);
       toast.error(`Error uploading file: ${error.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -77,8 +85,8 @@ const NewNote = () => {
     <div className="flex h-screen">
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div>
             <Input
               type="text"
               placeholder="Note title"
@@ -88,17 +96,27 @@ const NewNote = () => {
             />
           </div>
           
-          <div className="mb-6">
+          <div>
             <Editor content={content} onChange={setContent} />
           </div>
           
-          <div className="mb-6">
+          <div>
             <FileUpload onFileSelect={handleFileSelect} />
           </div>
           
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Note"}
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading || isUploading}
+            >
+              {isLoading ? "Saving..." : "Save Note"}
+            </Button>
+            {isUploading && (
+              <span className="text-sm text-muted-foreground">
+                Uploading file...
+              </span>
+            )}
+          </div>
         </div>
       </main>
     </div>
