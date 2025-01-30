@@ -74,14 +74,24 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', user.id);
+      // Create a proper object to send to the Edge Function
+      const payload = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        userId: user.id,
+        // Convert file to base64
+        content: await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        })
+      };
 
-      console.log("Calling upload-file function");
+      console.log("Calling upload-file function with payload");
       
       const { data, error } = await supabase.functions.invoke('upload-file', {
-        body: formData,
+        body: payload
       });
 
       if (error) {

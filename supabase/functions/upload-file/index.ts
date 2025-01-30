@@ -16,64 +16,64 @@ serve(async (req) => {
 
   try {
     console.log("Processing upload request");
-    const formData = await req.formData()
-    const file = formData.get('file') as File
-    const userId = formData.get('userId')
+    const payload = await req.json();
+    console.log("Received payload for file:", payload.name);
 
-    if (!file) {
-      console.error("No file provided");
+    if (!payload.content || !payload.name || !payload.type || !payload.userId) {
+      console.error("Missing required fields in payload");
       return new Response(
-        JSON.stringify({ error: 'No file uploaded' }),
+        JSON.stringify({ error: 'Missing required fields' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+      );
     }
 
-    if (!userId) {
-      console.error("No user ID provided");
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
-    }
+    // Convert base64 to Uint8Array
+    const base64Data = payload.content.split(',')[1];
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-    console.log("File received:", file.name, "Size:", file.size, "Type:", file.type);
+    console.log("File details:", {
+      name: payload.name,
+      size: payload.size,
+      type: payload.type,
+      userId: payload.userId
+    });
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
     // File size validation (50MB limit)
     const MAX_FILE_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      console.error("File too large:", file.size);
+    if (payload.size > MAX_FILE_SIZE) {
+      console.error("File too large:", payload.size);
       return new Response(
         JSON.stringify({ error: 'File size must be less than 50MB' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+      );
     }
 
     // Generate unique filename
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${crypto.randomUUID()}.${fileExt}`
-    const filePath = `${userId}/${fileName}`
+    const fileExt = payload.name.split('.').pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `${payload.userId}/${fileName}`;
 
     console.log("Uploading file to storage:", filePath);
 
     // Upload to storage
     const { data: storageData, error: uploadError } = await supabase.storage
       .from('attachments')
-      .upload(filePath, file, {
-        contentType: file.type,
+      .upload(filePath, binaryData, {
+        contentType: payload.type,
         upsert: false
-      })
+      });
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
       return new Response(
         JSON.stringify({ error: 'Failed to upload file to storage', details: uploadError }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
+      );
     }
 
     console.log("File uploaded to storage successfully");
@@ -82,23 +82,23 @@ serve(async (req) => {
     const { error: dbError } = await supabase
       .from('attachments')
       .insert({
-        file_name: file.name,
-        file_type: file.type.toUpperCase(),
-        file_size: file.size,
+        file_name: payload.name,
+        file_type: payload.type.toUpperCase(),
+        file_size: payload.size,
         file_path: filePath,
         metadata: {
-          originalName: file.name,
-          uploadedBy: userId,
+          originalName: payload.name,
+          uploadedBy: payload.userId,
           uploadedAt: new Date().toISOString()
         }
-      })
+      });
 
     if (dbError) {
       console.error("Database insert error:", dbError);
       return new Response(
         JSON.stringify({ error: 'Failed to save file metadata', details: dbError }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
+      );
     }
 
     console.log("File metadata saved to database");
@@ -107,15 +107,15 @@ serve(async (req) => {
       JSON.stringify({ 
         message: 'File uploaded successfully',
         filePath,
-        fileName: file.name
+        fileName: payload.name
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
+    );
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: 'An unexpected error occurred', details: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    )
+    );
   }
-})
+});
