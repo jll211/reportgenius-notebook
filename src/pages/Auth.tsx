@@ -18,30 +18,63 @@ const Auth = () => {
     setLoading(true);
     
     try {
+      console.log("Starting authentication process...");
+      
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        console.log("Attempting to sign up...");
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (signUpError) {
+          console.error("Sign up error:", signUpError);
+          if (signUpError.message.includes("email_provider_disabled")) {
+            throw new Error("Email sign up is currently disabled. Please enable it in your Supabase settings.");
+          }
+          throw signUpError;
+        }
+        
+        console.log("Sign up successful:", signUpData);
         toast.success("Account created successfully!");
-        // Since email verification is disabled, we can proceed to sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        
+        // Since email verification is disabled, proceed to sign in
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (signInError) throw signInError;
+        
+        if (signInError) {
+          console.error("Auto sign in error:", signInError);
+          if (signInError.message.includes("email_provider_disabled")) {
+            throw new Error("Email login is currently disabled. Please enable it in your Supabase settings.");
+          }
+          throw signInError;
+        }
+        
+        console.log("Auto sign in after signup successful:", signInData);
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log("Attempting to sign in...");
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          console.error("Sign in error:", error);
+          if (error.message.includes("email_provider_disabled")) {
+            throw new Error("Email login is currently disabled. Please enable it in your Supabase settings.");
+          }
+          throw error;
+        }
+        
+        console.log("Sign in successful:", data);
         toast.success("Signed in successfully!");
         navigate("/");
       }
     } catch (error: any) {
+      console.error("Authentication error:", error);
       toast.error(error.message);
     } finally {
       setLoading(false);
