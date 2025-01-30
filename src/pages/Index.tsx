@@ -2,8 +2,25 @@ import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { FileText, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+const fetchIdeas = async () => {
+  const { data, error } = await supabase
+    .from('ideas')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+  return data;
+};
 
 const Index = () => {
+  const { data: ideas, isLoading } = useQuery({
+    queryKey: ['ideas'],
+    queryFn: fetchIdeas,
+  });
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -19,19 +36,39 @@ const Index = () => {
             </Button>
           </div>
           
-          <div className="grid gap-4">
-            <div className="p-4 border rounded-lg hover:border-primary transition-colors">
-              <div className="flex items-start gap-4">
-                <FileText className="h-8 w-8 text-primary" />
-                <div>
-                  <h2 className="text-xl font-semibold mb-2">Welcome to IdeaBase</h2>
-                  <p className="text-muted-foreground">
-                    Start organizing your ideas by creating a new note or uploading files.
-                  </p>
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            <div className="grid gap-4">
+              {ideas && ideas.length > 0 ? (
+                ideas.map((idea) => (
+                  <div key={idea.id} className="p-4 border rounded-lg hover:border-primary transition-colors">
+                    <div className="flex items-start gap-4">
+                      <FileText className="h-8 w-8 text-primary" />
+                      <div>
+                        <h2 className="text-xl font-semibold mb-2">{idea.title}</h2>
+                        <p className="text-muted-foreground">
+                          {idea.content?.substring(0, 150)}...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 border rounded-lg hover:border-primary transition-colors">
+                  <div className="flex items-start gap-4">
+                    <FileText className="h-8 w-8 text-primary" />
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Welcome to IdeaBase</h2>
+                      <p className="text-muted-foreground">
+                        Start organizing your ideas by creating a new note or uploading files.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </main>
     </div>
