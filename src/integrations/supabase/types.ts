@@ -9,7 +9,128 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      attachments: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: Database["public"]["Enums"]["file_type"]
+          id: string
+          idea_id: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: Database["public"]["Enums"]["file_type"]
+          id?: string
+          idea_id?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: Database["public"]["Enums"]["file_type"]
+          id?: string
+          idea_id?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_tags: {
+        Row: {
+          idea_id: string
+          tag_id: string
+        }
+        Insert: {
+          idea_id: string
+          tag_id: string
+        }
+        Update: {
+          idea_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_tags_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ideas: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          is_archived: boolean | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +139,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      file_type:
+        | "JSON"
+        | "TXT"
+        | "RTF"
+        | "PDF"
+        | "M4A"
+        | "DOCX"
+        | "XLS"
+        | "CSV"
+        | "XLSX"
+        | "PNG"
+        | "JPG"
+        | "JPEG"
+        | "HTML"
     }
     CompositeTypes: {
       [_ in never]: never
