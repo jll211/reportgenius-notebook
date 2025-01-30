@@ -17,7 +17,7 @@ serve(async (req) => {
   try {
     console.log("Processing upload request");
     const formData = await req.formData()
-    const file = formData.get('file')
+    const file = formData.get('file') as File
     const userId = formData.get('userId')
 
     if (!file) {
@@ -82,8 +82,8 @@ serve(async (req) => {
     const { error: dbError } = await supabase
       .from('attachments')
       .insert({
-        file_name: fileName,
-        file_type: file.type,
+        file_name: file.name,
+        file_type: file.type.toUpperCase(),
         file_size: file.size,
         file_path: filePath,
         metadata: {
@@ -107,7 +107,7 @@ serve(async (req) => {
       JSON.stringify({ 
         message: 'File uploaded successfully',
         filePath,
-        fileName
+        fileName: file.name
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )

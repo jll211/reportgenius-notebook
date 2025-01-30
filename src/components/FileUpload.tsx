@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -42,7 +43,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
     }
   };
 
-  const validateAndUploadFile = (file: File) => {
+  const validateAndUploadFile = async (file: File) => {
     const allowedTypes = [
       "application/json",
       "text/plain",
@@ -66,10 +67,34 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Please sign in to upload files");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', user.id);
+
+      console.log("Calling upload-file function");
+      
+      const { data, error } = await supabase.functions.invoke('upload-file', {
+        body: formData,
+      });
+
+      if (error) {
+        console.error("Function error:", error);
+        throw error;
+      }
+
+      console.log("Upload response:", data);
       onFileSelect(file);
-    } catch (error) {
-      console.error("Error handling file upload:", error);
-      toast.error("Failed to upload file. Please try again.");
+      toast.success("File uploaded successfully");
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error(error.message || 'Error uploading file');
     }
   };
 
