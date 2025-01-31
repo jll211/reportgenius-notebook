@@ -131,6 +131,33 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_logs: {
+        Row: {
+          attachment_id: string
+          file_name: string
+          file_size: number
+          id: number
+          uploaded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attachment_id: string
+          file_name: string
+          file_size: number
+          id?: never
+          uploaded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attachment_id?: string
+          file_name?: string
+          file_size?: number
+          id?: never
+          uploaded_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

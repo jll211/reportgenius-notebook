@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
+  ideaId?: string;
 }
 
-export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
+export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -70,6 +71,11 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         return;
       }
 
+      if (!ideaId) {
+        toast.error("No idea selected for attachment");
+        return;
+      }
+
       // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -82,10 +88,11 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
           type: file.type,
           size: file.size,
           userId: user.id,
+          ideaId: ideaId,
           content: base64Content
         };
 
-        console.log("Calling upload-file function");
+        console.log("Calling upload-file function with ideaId:", ideaId);
         
         const { data, error } = await supabase.functions.invoke('upload-file', {
           body: payload
@@ -93,6 +100,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
 
         if (error) {
           console.error("Function error:", error);
+          toast.error("Failed to upload file");
           throw error;
         }
 

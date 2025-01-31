@@ -19,7 +19,7 @@ serve(async (req) => {
     const payload = await req.json();
     console.log("Received payload for file:", payload.name);
 
-    if (!payload.content || !payload.name || !payload.type || !payload.userId) {
+    if (!payload.content || !payload.name || !payload.type || !payload.userId || !payload.ideaId) {
       console.error("Missing required fields in payload");
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
@@ -35,7 +35,8 @@ serve(async (req) => {
       name: payload.name,
       size: payload.size,
       type: payload.type,
-      userId: payload.userId
+      userId: payload.userId,
+      ideaId: payload.ideaId
     });
 
     const supabase = createClient(
@@ -78,10 +79,11 @@ serve(async (req) => {
 
     console.log("File uploaded to storage successfully");
 
-    // Create database record
+    // Create database record in attachments table
     const { error: dbError } = await supabase
       .from('attachments')
       .insert({
+        idea_id: payload.ideaId,
         file_name: payload.name,
         file_type: payload.type.toUpperCase(),
         file_size: payload.size,
