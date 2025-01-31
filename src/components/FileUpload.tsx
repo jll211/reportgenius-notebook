@@ -27,9 +27,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      console.log("File dropped:", file);
-      validateAndUploadFile(file);
+      validateAndUploadFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -37,9 +35,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
     e.preventDefault();
     
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      console.log("File selected:", file);
-      validateAndUploadFile(file);
+      validateAndUploadFile(e.target.files[0]);
     }
   };
 
@@ -74,34 +70,41 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         return;
       }
 
-      // Create a proper object to send to the Edge Function
-      const payload = {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        userId: user.id,
-        // Convert file to base64
-        content: await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        })
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      
+      reader.onload = async () => {
+        const base64Content = reader.result as string;
+        
+        const payload = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          userId: user.id,
+          content: base64Content
+        };
+
+        console.log("Calling upload-file function");
+        
+        const { data, error } = await supabase.functions.invoke('upload-file', {
+          body: payload
+        });
+
+        if (error) {
+          console.error("Function error:", error);
+          throw error;
+        }
+
+        console.log("Upload response:", data);
+        onFileSelect(file);
+        toast.success("File uploaded successfully");
       };
 
-      console.log("Calling upload-file function with payload");
-      
-      const { data, error } = await supabase.functions.invoke('upload-file', {
-        body: payload
-      });
-
-      if (error) {
-        console.error("Function error:", error);
-        throw error;
-      }
-
-      console.log("Upload response:", data);
-      onFileSelect(file);
-      toast.success("File uploaded successfully");
+      reader.onerror = (error) => {
+        console.error('Error reading file:', error);
+        toast.error('Error reading file');
+      };
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast.error(error.message || 'Error uploading file');
@@ -117,13 +120,14 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
+      onClick={(e) => e.preventDefault()}
     >
       <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
       <p className="mt-2 text-sm text-muted-foreground">
         Drag and drop your files here, or
       </p>
       <label htmlFor="file-upload" className="mt-2 cursor-pointer">
-        <Button variant="outline" className="relative">
+        <Button variant="outline" className="relative" onClick={(e) => e.preventDefault()}>
           Browse Files
           <input
             id="file-upload"
