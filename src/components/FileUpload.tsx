@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ interface FileUploadProps {
 export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -20,27 +20,9 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndUploadFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    
-    if (e.target.files && e.target.files[0]) {
-      validateAndUploadFile(e.target.files[0]);
-    }
-  };
-
-  const validateAndUploadFile = async (file: File) => {
+  const validateAndUploadFile = useCallback(async (file: File) => {
     const allowedTypes = [
       "application/json",
       "text/plain",
@@ -76,9 +58,7 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
         return;
       }
 
-      // Convert file to base64
       const reader = new FileReader();
-      reader.readAsDataURL(file);
       
       reader.onload = async () => {
         const base64Content = reader.result as string;
@@ -101,7 +81,7 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
         if (error) {
           console.error("Function error:", error);
           toast.error("Failed to upload file");
-          throw error;
+          return;
         }
 
         console.log("Upload response:", data);
@@ -109,15 +89,35 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
         toast.success("File uploaded successfully");
       };
 
-      reader.onerror = (error) => {
-        console.error('Error reading file:', error);
+      reader.onerror = () => {
+        console.error('Error reading file');
         toast.error('Error reading file');
       };
+
+      reader.readAsDataURL(file);
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast.error(error.message || 'Error uploading file');
     }
-  };
+  }, [ideaId, onFileSelect]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndUploadFile(e.dataTransfer.files[0]);
+    }
+  }, [validateAndUploadFile]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    
+    if (e.target.files && e.target.files[0]) {
+      validateAndUploadFile(e.target.files[0]);
+    }
+  }, [validateAndUploadFile]);
 
   return (
     <div
@@ -128,14 +128,13 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      onClick={(e) => e.preventDefault()}
     >
       <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
       <p className="mt-2 text-sm text-muted-foreground">
         Drag and drop your files here, or
       </p>
       <label htmlFor="file-upload" className="mt-2 cursor-pointer">
-        <Button variant="outline" className="relative" onClick={(e) => e.preventDefault()}>
+        <Button variant="outline" type="button">
           Browse Files
           <input
             id="file-upload"
