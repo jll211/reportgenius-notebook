@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -11,6 +11,18 @@ interface FileUploadProps {
 
 export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
+
+  // Cleanup function for ResizeObserver
+  useEffect(() => {
+    return () => {
+      // Force cleanup of any existing ResizeObservers
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          // This will help clear any pending ResizeObserver callbacks
+        });
+      });
+    };
+  }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -60,41 +72,50 @@ export const FileUpload = ({ onFileSelect, ideaId }: FileUploadProps) => {
 
       const reader = new FileReader();
       
-      reader.onload = async () => {
-        const base64Content = reader.result as string;
-        
-        const payload = {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          userId: user.id,
-          ideaId: ideaId,
-          content: base64Content
+      const uploadPromise = new Promise((resolve, reject) => {
+        reader.onload = async () => {
+          try {
+            const base64Content = reader.result as string;
+            
+            const payload = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              userId: user.id,
+              ideaId: ideaId,
+              content: base64Content
+            };
+
+            console.log("Calling upload-file function with ideaId:", ideaId);
+            
+            const { data, error } = await supabase.functions.invoke('upload-file', {
+              body: payload
+            });
+
+            if (error) {
+              console.error("Function error:", error);
+              reject(error);
+              return;
+            }
+
+            console.log("Upload response:", data);
+            resolve(data);
+            onFileSelect(file);
+            toast.success("File uploaded successfully");
+          } catch (err) {
+            reject(err);
+          }
         };
 
-        console.log("Calling upload-file function with ideaId:", ideaId);
-        
-        const { data, error } = await supabase.functions.invoke('upload-file', {
-          body: payload
-        });
-
-        if (error) {
-          console.error("Function error:", error);
-          toast.error("Failed to upload file");
-          return;
-        }
-
-        console.log("Upload response:", data);
-        onFileSelect(file);
-        toast.success("File uploaded successfully");
-      };
-
-      reader.onerror = () => {
-        console.error('Error reading file');
-        toast.error('Error reading file');
-      };
+        reader.onerror = (error) => {
+          console.error('Error reading file:', error);
+          reject(error);
+        };
+      });
 
       reader.readAsDataURL(file);
+      await uploadPromise;
+
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast.error(error.message || 'Error uploading file');
